@@ -1,0 +1,36 @@
+Package: hydrovur
+Title: HydroVu Public API Client
+Version: 0.1.0
+Authors@R: 
+    person("Skyler", "Lewis", , "slewis@flowwest.com", role = c("aut", "cre"))
+Description: A connection-oriented R client for the HydroVu public REST API.
+    Provides cached access to locations and parameter friendly-names, fetches
+    sensor readings over arbitrary time windows, and offers an optional helper
+    for windowed upserts into a PostgreSQL backend.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Depends:
+    R (>= 4.1)
+Imports:
+    DBI,
+    dplyr,
+    glue,
+    httr,
+    janitor,
+    jsonlite,
+    lubridate,
+    purrr,
+    rlang,
+    tibble,
+    tidyr
+Suggests:
+    paws,
+    pool,
+    RPostgres,
+    testthat (>= 3.0.0),
+    withr
+Config/testthat/edition: 3
+URL: https://github.com/FlowWest/hydrovur
+BugReports: https://github.com/FlowWest/hydrovur/issues

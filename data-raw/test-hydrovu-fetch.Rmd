@@ -1,0 +1,273 @@
+---
+title: "hydrovur test"
+output: html_document
+---
+
+This notebook exercises every public function in `hydrovur` against the live
+HydroVu API and an AWS Postgres database. It uses the site / sensor / gage
+inventory from the upstream `global.R`, inlined so the script is self-contained.
+
+**Run interactively, chunk by chunk** — don't knit blindly. The sync chunks
+write to a real database table (`gage_readings_smoketest`), and the cleanup
+chunk drops it.
+
+Required environment variables: `HYDROVU_CLIENT_ID`, `HYDROVU_CLIENT_SECRET`,
+`SECRET_MANAGER_SECRET_NAME`.
+
+## Setup
+
+```{r setup, message=FALSE}
+devtools::load_all()  # use dev version, not installed
+library(dplyr)
+library(tibble)
+library(lubridate)
+library(DBI)
+```
+
+## Site inventory
+
+```{r inventory}
+# table of sites
+sites <- tribble(
+  ~site_category,    ~site_code, ~site_name,                  ~site_descrip,                 
+  "Stage Gage",      "MC-01",    "Manning Creek West Branch", "5400 ft DS Soda Bay Rd",      
+  "Stage Gage",      "MC-03",    "Manning Creek Mainstem",    "3800 ft DS Soda Bay Rd",      
+  "Stage Gage",      "MC-02",    "Secondary Channel",         "4300 ft DS Soda Bay Rd",       
+  "Piezometer",      "PZ-A1",    "Piezometer A1",             "E, 300 ft S of Clear Lake",   
+  "Piezometer",      "PZ-A2",    "Piezometer A2",             "E, 1000 ft S of Clear Lake",  
+  "Piezometer",      "PZ-A3",    "Piezometer A3",             "E, 2000 ft S of Clear Lake",  
+  "Piezometer",      "PZ-B1",    "Piezometer B1",             "W, 800 ft S of Clear Lake",   
+  "Piezometer",      "PZ-B2",    "Piezometer B2",             "W, 1400 ft S of Clear Lake",  
+  "Piezometer",      "PZ-B3",    "Piezometer B3",             "W, 2600 ft S of Clear Lake",  
+  "Piezometer",      "PZ-B4",    "Piezometer B4",             "W, 3500 ft S of Clear Lake",  
+  "Piezometer",      "PZ-C1",    "Piezometer C1",             "W, 1000 ft W of Transect B",  
+  "Piezometer",      "PZ-C2",    "Piezometer C2",             "W, 1500 ft W of Transect B",  
+  "Piezometer",      "PZ-C3",    "Piezometer C3",             "W, 2400 ft W of Transect B",  
+) |>
+  mutate(site_category = factor(site_category))
+
+# table of sensors, which correspond to hydrovu "locations" and can be >1 per site
+sensors <- tribble(
+  ~site_code,   ~hydrovu_loc,    ~sensor_type,
+  "MC-01",      "2025SGMC01",    "troll",
+  "MC-01",      "2025SGMC01_VL", "vulink",
+  "MC-03",      "2025SGMC03",    "troll",
+  "MC-03",      "2025SGMC03_VL", "vulink",
+  "MC-02",      "2025SGMC02",    "troll",
+  "MC-02",      "2025SGMC02_VL", "vulink",
+  "PZ-A1",      "2025PZA01",     "troll",
+  "PZ-A2",      "2025PZA02",     "troll",
+  "PZ-A3",      "2025PZA03",     "troll",
+  "PZ-B1",      "2025PZB01",     "troll",
+  "PZ-B2",      "2025PZB02",     "troll",
+  "PZ-B3",      "2025PZB03",     "troll",
+  "PZ-B4",      "2025PZB04",     "troll",
+  "PZ-C1",      "2025PZC01",     "troll",
+  "PZ-C2",      "2025PZC02",     "troll",
+  "PZ-C3",      "2025PZC03",     "troll",
+  "PZ-B4",      "2025BAROK01",   "barotroll"
+) |>
+  mutate(across(everything(), as.character)) |>
+  inner_join(sites |> select(site_code, site_category, site_name), by = join_by(site_code))
+```
+
+## Connect
+
+`hv_connect()` authenticates and (with `prime = TRUE`) eagerly populates the
+locations and parameters caches.
+
+```{r connect}
+stopifnot(
+  nzchar(Sys.getenv("HYDROVU_CLIENT_ID")),
+  nzchar(Sys.getenv("HYDROVU_CLIENT_SECRET"))
+)
+
+con <- hv_connect()
+con
+```
+
+## Inspect cached state
+
+```{r cached-locations}
+hv_locations(con)
+```
+
+```{r cached-parameters}
+hv_parameters(con)
+```
+
+A quick check that every `hydrovu_loc` in `sensors` resolves to a HydroVu location:
+
+```{r resolve-names}
+missing <- setdiff(sensors$hydrovu_loc, hv_locations(con)$name)
+if (length(missing) == 0L) {
+  message("All ", nrow(sensors), " sensor names resolve to HydroVu locations.")
+} else {
+  warning("Missing from HydroVu: ", paste(missing, collapse = ", "))
+}
+```
+
+## Filter to stage gages
+
+```{r filter-gages}
+gage_locs <- hv_locations(con) |>
+  filter(name %in% sensors$hydrovu_loc[sensors$site_category == "Stage Gage"])
+
+piezo_locs <- hv_locations(con) |>
+  filter(name %in% sensors$hydrovu_loc[sensors$site_category == "Piezometer"])
+
+print(gage_locs)
+stopifnot(nrow(gage_locs) > 0L)
+```
+
+## Fetch a small readings sample
+
+Two locations over a recent hour, quick round-trip to confirm the shape.
+
+```{r fetch-sample}
+# wrapped in with_options for verbose messaging
+sample_readings <- withr::with_options(list(hydrovur.verbose = TRUE), 
+  hv_readings(
+    con,
+    location_ids = head(gage_locs$location_id, 2),
+    start        = Sys.time() - hours(24),
+    end          = Sys.time() - hours(23)
+  )
+  )
+
+sample_readings |>
+  left_join(gage_locs |> select(location_id, name), by = "location_id") |>
+  count(name, parameter_name, unit_id, name = "n_readings") |>
+  arrange(name, parameter_name)
+```
+
+Expected columns on `sample_readings`: `location_id`, `parameter_id`, 
+`unit_id`, `timestamp`, `value`.
+
+```{r check-shape}
+stopifnot(
+  setequal(
+    names(sample_readings),
+    c("location_id", "parameter_id", "parameter_name",
+      "unit_id", "timestamp", "value")
+  )
+)
+```
+
+## Set up DB connection
+
+Same AWS Secrets Manager + pool pattern as the original `helpers.R`.
+
+```{r db-setup, message=FALSE}
+library(paws)
+library(RPostgres)
+library(pool)
+
+secret <- paws::secretsmanager()$get_secret_value(
+  SecretId = Sys.getenv("SECRET_MANAGER_SECRET_NAME")
+)$SecretString |>
+  jsonlite::fromJSON()
+
+db <- pool::dbPool(
+  drv      = RPostgres::Postgres(),
+  host     = if ("host"   %in% names(secret)) secret$host   else
+               "interoperable-flows-db.ctfqkslimkx4.us-west-2.rds.amazonaws.com",
+  port     = 5432,
+  dbname   = if ("dbname" %in% names(secret)) secret$dbname else "postgres",
+  user     = secret$username,
+  password = secret$password,
+  sslmode  = "require"
+)
+```
+
+## DB helpers in isolation
+
+Use a dedicated test table so we don't touch production data.
+
+```{r test-table}
+TEST_TABLE <- "test_hydrovu_readings"
+
+# create
+hv_ensure_table(db, TEST_TABLE)
+
+# empty on a fresh table
+hv_last_timestamps(db, TEST_TABLE)
+```
+
+## Sync a small window
+
+Three explicit steps: compute windows, fetch, validate + upsert.
+
+```{r first-sync-windows}
+windows <- hv_compute_windows(
+  db, gage_locs, table = TEST_TABLE,
+  fresh_start_days = 1,
+  overlap_days     = 1
+)
+windows
+```
+
+```{r first-sync-get-readings}
+new_readings <- hv_readings(
+  con,
+  location_ids = windows$location_id,
+  start        = windows$start_ts,
+  end          = windows$end_ts
+)
+nrow(new_readings)
+new_readings |> head()
+```
+
+```{r first-sync-execute}\
+hv_sync(db, new_readings, table = TEST_TABLE)
+```
+
+## Idempotency
+
+Re-running should produce the same row count in the table (existing rows
+update in place rather than duplicate).
+
+```{r idempotent}
+row_count <- function() {
+  DBI::dbGetQuery(
+    db,
+    glue::glue_sql("SELECT COUNT(*) AS n FROM {`TEST_TABLE`}", .con = db)
+  )$n
+}
+
+before <- row_count()
+
+windows  <- hv_compute_windows(db, gage_locs, table = TEST_TABLE,
+                               fresh_start_days = 1, overlap_days = 1)
+readings <- hv_readings(con, windows$location_id,
+                        windows$start_ts, windows$end_ts)
+hv_sync(db, readings, table = TEST_TABLE)
+
+after <- row_count()
+
+cat("rows before second sync:", before, "\n",
+    "rows after  second sync:", after,  "\n")
+stopifnot(before == after)
+```
+
+## Per-location coverage
+
+```{r coverage}
+hv_last_timestamps(db, TEST_TABLE) |>
+  left_join(gage_locs |> select(location_id, name), by = "location_id") |>
+  select(name, location_id, last_ts) |>
+  arrange(name)
+```
+
+## Cleanup
+
+Drops the test table and releases the pool.
+
+```{r cleanup, eval=FALSE}
+DBI::dbExecute(db, glue::glue_sql("DROP TABLE {`TEST_TABLE`}", .con = db))
+pool::poolClose(db)
+```
+
+
+### TODO NEXT STEP -- FORCE UTC FOR ALL TIMESTAMPS
+

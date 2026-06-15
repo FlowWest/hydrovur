@@ -1,0 +1,329 @@
+{
+   "info":{
+      "description":"Welcome to the public API for HydroVu. This page describes the authentication methods\nand endpoints required to access your HydroVu data programmatically.\n\nThe API exposes endpoints for users to query their available `locations` and associated `readings`.\nThere is a demo account set up for users to explore this API using the clientId `PublicApiDemo` and the clientSecret `PublicApiSecret`,\nhowever the data is curated for demo purposes only.\nUsers may also connect to a real account here to explore the API using their own data.\n\n### Authentication\n\nUser authentication is handled via [OAuth2 Client Credentials](https://oauth.net/2/grant-types/client-credentials/).\nTo gain access to an API session, an application must use a client ID and client secret.\nAny admin user can log in to HydroVu and create these credentials on the [People and Permissions page](/#/company-dashboard/users/list).\nSee the FAQ entitled [How do I access the HydroVu API](https://in-situ.com/us/faq/software-help/hydrovu-faqs/how-do-i-access-the-hydrovu-api)\nfor complete instructions.\n\nThe API has a rate-limiting scheme to protect against malicious or abusive use of the system.\nA user will be limited to no more than 1000 requests/minute.\nThe response header `x-isi-requests-this-minute` indicates the number of requests performed since the start of the minute,\nand the response header `x-isi-requests-timeout` indicates the time that the next minute will start.\n\n### Paging\n\nPaging is handled through the use of HTTP headers. Responses will have a header `x-isi-next-page` and a header `x-isi-prev-page`\nthat can be inserted into a request header `x-isi-start-page` to fetch the next or previous page respectively.\nIf no start page is provided, the first page will be used. If the response does not have a next or previous page,\nthe headers are not provided.\n\n**NOTE:** All filters must be the same when fetching subsequent pages. Any filter changes will result in the page being invalidated.",
+      "title":"HydroVu Public API",
+      "version":"v1"
+   },
+   "servers":[
+      {
+         "url":"https://www.hydrovu.com"
+      }
+   ],
+   "paths":{
+      "/static/{filename}":{
+         
+      },
+      "/public-api/v1/sispec/friendlynames":{
+         "get":{
+            "tags":[
+               "Friendly Name Lookup"
+            ],
+            "summary":"View the friendly name mappings",
+            "description":"This endpoint can provide you with mappings between the SIS ids or HydroVu keys provided by ot her endpoints, and the information they represent. If a unit or parameter is not recognized by HydroVu, there is no mapping here and is considered a user type.",
+            "security":[
+               {
+                  "OAuth2":[
+                     
+                  ]
+               }
+            ],
+            "responses":{
+               "200":{
+                  "description":"OK",
+                  "content":{
+                     "application/json":{
+                        "schema":{
+                           "$ref":"#/components/schemas/SisIdListing"
+                        }
+                     }
+                  }
+               },
+               "401":{
+                  "$ref":"#/components/responses/401"
+               },
+               "403":{
+                  "$ref":"#/components/responses/403"
+               },
+               "404":{
+                  "$ref":"#/components/responses/404"
+               }
+            }
+         }
+      },
+      "/public-api/v1/locations/list":{
+         "get":{
+            "tags":[
+               "Locations"
+            ],
+            "summary":"View the list of locations accessible to your account",
+            "description":"This endpoint will return a list of all the locations for your company. Use the `id` property to retrieve further information and data about the location.",
+            "security":[
+               {
+                  "OAuth2":[
+                     
+                  ]
+               }
+            ],
+            "parameters":[
+               {
+                  "name":"x-isi-start-page",
+                  "in":"header",
+                  "required":false,
+                  "description":"x-isi-start-page",
+                  "schema":{
+                     "type":"string"
+                  }
+               }
+            ],
+            "responses":{
+               "200":{
+                  "description":"OK",
+                  "content":{
+                     "application/json":{
+                        "schema":{
+                           "$ref":"#/components/schemas/LocationInfo"
+                        }
+                     }
+                  }
+               },
+               "401":{
+                  "$ref":"#/components/responses/401"
+               },
+               "403":{
+                  "$ref":"#/components/responses/403"
+               },
+               "404":{
+                  "$ref":"#/components/responses/404"
+               }
+            }
+         }
+      },
+      "/public-api/v1/locations/{id}/data":{
+         "get":{
+            "tags":[
+               "Locations"
+            ],
+            "summary":"View data at a location",
+            "description":"This endpoint will provide the data recorded at a location. Select the location by `id`, and then add a query parameter for `startTime`. `startTime` is an integer timestamp in seconds from the start of the Linux epoch (00:00 1st Jan 1970 UTC). The service will find the next block of data that starts at or after your timestamp, and return it. A reading may be a consolidation of multiple readings if the sampling rate is higher than once per minute.\n\nExample: Using an `id` from the locations list, and a `startTime` of 0, you can view the data starting from the first reading on the location. If the data covers multiple pages, the following pages can be retrieved by putting the `x-isi-next-page` response header value into an `x-isi-start-page` request header.\n\nNote: VuLink timestamps are always in UTC. Timestamps from a Cube or Tube may appear in the device's local time.",
+            "security":[
+               {
+                  "OAuth2":[
+                     
+                  ]
+               }
+            ],
+            "parameters":[
+               {
+                  "in":"path",
+                  "name":"id",
+                  "schema":{
+                     "type":"integer"
+                  },
+                  "required":true
+               },
+               {
+                  "in":"query",
+                  "name":"startTime",
+                  "schema":{
+                     "type":"integer",
+                     "default":0
+                  }
+               },
+               {
+                  "in":"query",
+                  "name":"endTime",
+                  "schema":{
+                     "type":"integer"
+                  }
+               },
+               {
+                  "in":"header",
+                  "name":"x-isi-start-page",
+                  "schema":{
+                     "type":"string"
+                  }
+               }
+            ],
+            "responses":{
+               "200":{
+                  "description":"OK",
+                  "content":{
+                     "application/json":{
+                        "schema":{
+                           "$ref":"#/components/schemas/LocationReadings"
+                        }
+                     }
+                  }
+               },
+               "401":{
+                  "$ref":"#/components/responses/401"
+               },
+               "403":{
+                  "$ref":"#/components/responses/403"
+               },
+               "404":{
+                  "$ref":"#/components/responses/404"
+               }
+            }
+         }
+      },
+      "/public-api/oauth/token":{
+         
+      }
+   },
+   "tags":[
+      {
+         "name":"Friendly Name Lookup",
+         "description":"Endpoint for retrieving Friendly Name Information"
+      },
+      {
+         "name":"Locations",
+         "description":"Endpoints for retrieving location data"
+      }
+   ],
+   "openapi":"3.0.3",
+   "components":{
+      "schemas":{
+         "LocationInfo":{
+            "type":"object",
+            "properties":{
+               "description":{
+                  "type":"string"
+               },
+               "gps":{
+                  "$ref":"#/components/schemas/LatLng"
+               },
+               "id":{
+                  "type":"integer",
+                  "format":"int64",
+                  "example":123456
+               },
+               "name":{
+                  "type":"string"
+               }
+            },
+            "title":"LocationInfo"
+         },
+         "LatLng":{
+            "type":"object",
+            "properties":{
+               "latitude":{
+                  "type":"number",
+                  "format":"double"
+               },
+               "longitude":{
+                  "type":"number",
+                  "format":"double"
+               }
+            },
+            "title":"LatLng"
+         },
+         "LocationReadings":{
+            "type":"object",
+            "properties":{
+               "locationId":{
+                  "type":"integer",
+                  "format":"int64"
+               },
+               "parameters":{
+                  "type":"array",
+                  "description":"The data for this locationReadings are listed up to every minute under their parameter. Any minutes with no readings are excluded.",
+                  "items":{
+                     "$ref":"#/components/schemas/ParameterInfo"
+                  }
+               }
+            },
+            "title":"LocationReadings"
+         },
+         "ParameterInfo":{
+            "type":"object",
+            "properties":{
+               "customParameter":{
+                  "type":"boolean",
+                  "description":"Indicates whether this is a custom parameter or one defined in the System Integration Specification document"
+               },
+               "parameterId":{
+                  "type":"string",
+                  "example":27,
+                  "description":"Matches the parameter Ids defined in the System Integration Specification document -OR- the custom name given to a custom parameter"
+               },
+               "readings":{
+                  "type":"array",
+                  "description":"The readings for this parameter",
+                  "items":{
+                     "$ref":"#/components/schemas/Reading"
+                  }
+               },
+               "unitId":{
+                  "type":"string",
+                  "example":163,
+                  "description":"Matches the unit Ids defined in the System Integration Specification document -OR- the custom unit given to a custom parameter"
+               }
+            },
+            "title":"ParameterInfo"
+         },
+         "Reading":{
+            "type":"object",
+            "properties":{
+               "timestamp":{
+                  "type":"integer",
+                  "format":"int64",
+                  "description":"Epoch time in seconds when this reading was recorded"
+               },
+               "value":{
+                  "type":"number",
+                  "format":"double",
+                  "description":"The value of this reading. If there was more than 1 reading in this minute, this value will be the average of all the readings during that minute."
+               }
+            },
+            "title":"Reading",
+            "description":"Represents a single data point. The time and value of the reading"
+         },
+         "SisIdListing":{
+            "type":"object",
+            "properties":{
+               "parameters":{
+                  "type":"object",
+                  "description":"Provides common names for the parameters represented elsewhere by SIS ids or keys.",
+                  "additionalProperties":{
+                     "type":"string"
+                  }
+               },
+               "units":{
+                  "type":"object",
+                  "description":"Provides common names for the units represented elsewhere by SIS ids or keys.",
+                  "additionalProperties":{
+                     "type":"string"
+                  }
+               }
+            },
+            "title":"SisIdListing"
+         }
+      },
+      "responses":{
+         "401":{
+            "description":"Unauthorized"
+         },
+         "403":{
+            "description":"Forbidden"
+         },
+         "404":{
+            "description":"Not Found"
+         }
+      },
+      "securitySchemes":{
+         "OAuth2":{
+            "type":"oauth2",
+            "flows":{
+               "clientCredentials":{
+                  "tokenUrl":"/public-api/oauth/token",
+                  "scopes":{
+                     "read:locations":"read data about locations",
+                     "read:data":"read timeseries data from locations"
+                  }
+               }
+            }
+         }
+      }
+   }
+}

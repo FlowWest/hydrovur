@@ -1,0 +1,6 @@
+* text=auto
+*.R text eol=lf
+*.Rmd text eol=lf
+*.Rd text eol=lf
+*.md text eol=lf
+*.json text eol=lf
