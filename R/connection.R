@@ -43,7 +43,7 @@ hv_connect <- function(client_id     = Sys.getenv("HYDROVU_CLIENT_ID"),
   con$base_url         <- base_url
   con$token_url        <- token_url
   con$token            <- NULL
-  con$token_expires_at <- as.POSIXct(NA)
+  con$token_expires_at <- as.POSIXct(NA, tz = "UTC")
   con$locations        <- NULL
   con$parameters       <- NULL
   class(con) <- "hydrovu_connection"
@@ -96,7 +96,7 @@ hv_refresh_token <- function(con) {
   httr::stop_for_status(res)
   body <- httr::content(res, "parsed", type = "application/json")
   con$token            <- body$access_token
-  con$token_expires_at <- Sys.time() + as.difftime(
+  con$token_expires_at <- lubridate::with_tz(Sys.time(), "UTC") + as.difftime(
     coalesce_null(body$expires_in, 3600), units = "secs"
   )
   invisible(con)

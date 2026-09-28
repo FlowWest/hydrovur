@@ -30,3 +30,27 @@ test_that("hv_compute_windows errors on non-data-frame locations", {
   expect_error(hv_compute_windows(NULL, list(location_id = "x"), start_fresh = TRUE),
                regexp = "data frame")
 })
+
+test_that("hv_compute_windows backs off last_ts by overlap_days and falls back for new locations", {
+  last <- as.POSIXct("2026-06-01 12:00:00", tz = "UTC")
+  local_mocked_bindings(
+    hv_last_timestamps = function(db_con, table, location_ids) {
+      tibble::tibble(location_id = "loc1", last_ts = last)
+    }
+  )
+  out <- hv_compute_windows(NULL, make_locs(), table = "t",
+                            overlap_days = 2, fresh_start_days = 14)
+
+  expect_named(out, c("location_id", "name", "start_ts", "end_ts"))
+  expect_equal(out$start_ts[out$location_id == "loc1"], last - lubridate::days(2))
+
+  now <- lubridate::with_tz(Sys.time(), "UTC")
+  fresh <- out$start_ts[out$location_id == "loc2"]
+  expect_lt(abs(as.numeric(fresh - (now - lubridate::days(14)), units = "secs")), 5)
+})
+
+test_that("hv_last_timestamps short-circuits on empty location_ids", {
+  out <- hv_last_timestamps(NULL, "t", character())
+  expect_equal(nrow(out), 0L)
+  expect_named(out, c("location_id", "last_ts"))
+})

@@ -15,7 +15,7 @@ hv_last_timestamps(db_con, table = "gage_readings", location_ids = NULL)
 (default), the query covers every location present in the table.}
 }
 \value{
-Tibble with \code{location_id} and \code{last_ts} columns.
+Tibble with \code{location_id} and \code{last_ts} (POSIXct, UTC) columns.
 }
 \description{
 Per-location latest timestamp in a readings table

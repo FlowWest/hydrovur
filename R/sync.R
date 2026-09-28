@@ -38,7 +38,7 @@ hv_ensure_table <- function(db_con, table = "gage_readings") {
 #' @param location_ids Optional character vector to scope the query. If `NULL`
 #'   (default), the query covers every location present in the table.
 #'
-#' @return Tibble with `location_id` and `last_ts` columns.
+#' @return Tibble with `location_id` and `last_ts` (POSIXct, UTC) columns.
 #' @export
 hv_last_timestamps <- function(db_con, table = "gage_readings",
                                location_ids = NULL) {
@@ -66,7 +66,7 @@ hv_last_timestamps <- function(db_con, table = "gage_readings",
   
   DBI::dbGetQuery(db_con, sql) |>
     tibble::as_tibble() |>
-    dplyr::mutate(last_ts = lubridate::with_tz(.data$last_ts, "UTC"))
+    dplyr::mutate(last_ts = as_utc(.data$last_ts))
 }
 
 #' Upsert a data frame into a PostgreSQL table
@@ -220,6 +220,9 @@ hv_compute_windows <- function(db_con, locations,
 #' it must be a data frame, contain every column in `schema_cols`, have no
 #' NAs in `unique_cols`, and have a POSIXct `timestamp` and numeric `value`.
 #'
+#' `timestamp` is normalised to UTC (same instant, UTC label), so a readings
+#' frame built in local time is safe to pass through.
+#'
 #' Extra (non-schema) columns are dropped with a message. Duplicate rows on
 #' `unique_cols` are deduplicated (first wins via `dplyr::distinct(..., .keep_all = TRUE)`).
 #'
@@ -231,7 +234,8 @@ hv_compute_windows <- function(db_con, locations,
 #'   target table's primary key).
 #' @param schema_cols Columns the result is projected onto, in order.
 #'
-#' @return A tibble with exactly `schema_cols`, deduplicated on `unique_cols`.
+#' @return A tibble with exactly `schema_cols`, deduplicated on `unique_cols`,
+#'   with `timestamp` in UTC.
 #' @export
 hv_validate_readings <- function(
     readings,
@@ -276,6 +280,7 @@ hv_validate_readings <- function(
   }
   
   readings |>
+    dplyr::mutate(timestamp = lubridate::with_tz(.data$timestamp, "UTC")) |>
     dplyr::select(dplyr::all_of(schema_cols)) |>
     dplyr::distinct(dplyr::across(dplyr::all_of(unique_cols)),
                     .keep_all = TRUE) |>

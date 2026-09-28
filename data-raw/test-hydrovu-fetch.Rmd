@@ -176,7 +176,8 @@ db <- pool::dbPool(
   dbname   = if ("dbname" %in% names(secret)) secret$dbname else "postgres",
   user     = secret$username,
   password = secret$password,
-  sslmode  = "require"
+  sslmode  = "require",
+  timezone = "UTC"   # session + returned POSIXct both UTC
 )
 ```
 
@@ -259,6 +260,20 @@ hv_last_timestamps(db, TEST_TABLE) |>
   arrange(name)
 ```
 
+## Timezone check
+
+Every timestamp the package hands back should be labelled UTC, regardless of
+the R session's local timezone.
+
+```{r utc-check}
+stopifnot(
+  identical(attr(sample_readings$timestamp, "tzone"), "UTC"),
+  identical(attr(windows$start_ts, "tzone"), "UTC"),
+  identical(attr(windows$end_ts, "tzone"), "UTC"),
+  identical(attr(hv_last_timestamps(db, TEST_TABLE)$last_ts, "tzone"), "UTC")
+)
+```
+
 ## Cleanup
 
 Drops the test table and releases the pool.
@@ -267,7 +282,3 @@ Drops the test table and releases the pool.
 DBI::dbExecute(db, glue::glue_sql("DROP TABLE {`TEST_TABLE`}", .con = db))
 pool::poolClose(db)
 ```
-
-
-### TODO NEXT STEP -- FORCE UTC FOR ALL TIMESTAMPS
-

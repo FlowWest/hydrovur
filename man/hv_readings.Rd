@@ -14,12 +14,13 @@ hv_readings(con, location_ids, start, end)
 
 \item{start, end}{Time bounds. May be a single value (applied to all
 locations) or vectors the same length as \code{location_ids} (per-location
-windows). Anything coercible by \code{\link[=as.POSIXct]{as.POSIXct()}} is accepted; timezone
-defaults to UTC.}
+windows). Accepts POSIXct/POSIXlt (any timezone -- the instant is kept),
+\code{Date}, epoch seconds, or character. Character and \code{Date} values without
+an explicit UTC offset are interpreted as UTC, \emph{not} local time.}
 }
 \value{
 A tibble with columns \code{location_id}, \code{parameter_id},
-\code{parameter_name}, \code{unit_id}, \code{timestamp}, \code{value}.
+\code{parameter_name}, \code{unit_id}, \code{timestamp} (POSIXct, UTC), \code{value}.
 }
 \description{
 Iterates over \code{location_ids}, fetching each location's readings between

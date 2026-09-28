@@ -11,11 +11,12 @@
 #'   `hv_locations(con)$location_id` or a filtered subset).
 #' @param start,end Time bounds. May be a single value (applied to all
 #'   locations) or vectors the same length as `location_ids` (per-location
-#'   windows). Anything coercible by [as.POSIXct()] is accepted; timezone
-#'   defaults to UTC.
+#'   windows). Accepts POSIXct/POSIXlt (any timezone -- the instant is kept),
+#'   `Date`, epoch seconds, or character. Character and `Date` values without
+#'   an explicit UTC offset are interpreted as UTC, *not* local time.
 #'
 #' @return A tibble with columns `location_id`, `parameter_id`,
-#'   `parameter_name`, `unit_id`, `timestamp`, `value`.
+#'   `parameter_name`, `unit_id`, `timestamp` (POSIXct, UTC), `value`.
 #' @export
 #'
 #' @examples
@@ -44,8 +45,11 @@ hv_readings <- function(con, location_ids, start, end) {
   }
 
   loc_ids <- as.character(location_ids)
-  start   <- rep_len(as.POSIXct(start, tz = "UTC"), length(loc_ids))
-  end     <- rep_len(as.POSIXct(end,   tz = "UTC"), length(loc_ids))
+  start   <- rep_len(as_utc(start, "start"), length(loc_ids))
+  end     <- rep_len(as_utc(end,   "end"),   length(loc_ids))
+  if (anyNA(start) || anyNA(end)) {
+    stop("`start` and `end` must not contain NA.", call. = FALSE)
+  }
 
   parms   <- hv_parameters(con)
   base    <- con$base_url
@@ -85,6 +89,8 @@ hv_readings <- function(con, location_ids, start, end) {
 
   if (nrow(rows) == 0L) return(rows)
 
-  dplyr::select(rows, "location_id", "parameter_id", "parameter_name",
-                "unit_id", "timestamp", "value")
+  rows |>
+    dplyr::mutate(timestamp = as_utc(.data$timestamp)) |>
+    dplyr::select("location_id", "parameter_id", "parameter_name",
+                  "unit_id", "timestamp", "value")
 }

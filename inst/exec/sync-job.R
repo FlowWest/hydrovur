@@ -103,7 +103,8 @@ main <- function() {
     dbname   = coalesce_null(secret$dbname, "postgres"),
     user     = secret$username,
     password = secret$password,
-    sslmode  = "require"
+    sslmode  = "require",
+    timezone = "UTC"   # session + returned POSIXct both UTC
   )
   on.exit(pool::poolClose(db), add = TRUE)
   log_ts("DB connected")

@@ -4,7 +4,15 @@
 \alias{hv_upsert}
 \title{Upsert a data frame into a PostgreSQL table}
 \usage{
-hv_upsert(db_con, df, table, unique_cols, overwrite = TRUE, batch_size = NULL)
+hv_upsert(
+  db_con,
+  df,
+  table,
+  unique_cols,
+  overwrite = TRUE,
+  batch_size = NULL,
+  quiet = FALSE
+)
 }
 \arguments{
 \item{db_con}{A DBI connection or \code{pool::Pool} to PostgreSQL.}
@@ -19,6 +27,8 @@ primary key or a \code{UNIQUE} constraint).}
 \item{overwrite}{If \code{TRUE} (default), \verb{DO UPDATE}; otherwise \verb{DO NOTHING}.}
 
 \item{batch_size}{If non-NULL, split the upsert into batches of this size.}
+
+\item{quiet}{If \code{TRUE}, suppress the completion message (used by \code{\link[=hv_sync]{hv_sync()}}).}
 }
 \value{
 The number of rows upserted, invisibly.

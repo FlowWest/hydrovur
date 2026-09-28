@@ -19,7 +19,8 @@ target table's primary key).}
 \item{schema_cols}{Columns the result is projected onto, in order.}
 }
 \value{
-A tibble with exactly \code{schema_cols}, deduplicated on \code{unique_cols}.
+A tibble with exactly \code{schema_cols}, deduplicated on \code{unique_cols},
+with \code{timestamp} in UTC.
 }
 \description{
 Checks that \code{readings} is well-formed for \code{hv_sync()} / \code{hv_upsert()}:
@@ -27,6 +28,9 @@ it must be a data frame, contain every column in \code{schema_cols}, have no
 NAs in \code{unique_cols}, and have a POSIXct \code{timestamp} and numeric \code{value}.
 }
 \details{
+\code{timestamp} is normalised to UTC (same instant, UTC label), so a readings
+frame built in local time is safe to pass through.
+
 Extra (non-schema) columns are dropped with a message. Duplicate rows on
 \code{unique_cols} are deduplicated (first wins via \code{dplyr::distinct(..., .keep_all = TRUE)}).
 

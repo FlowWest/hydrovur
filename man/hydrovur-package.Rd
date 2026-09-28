@@ -20,7 +20,7 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: First Last \email{you@example.com}
+\strong{Maintainer}: Skyler Lewis \email{slewis@flowwest.com}
 
 }
 \keyword{internal}

@@ -39,6 +39,10 @@
   RPostgres returned `last_ts` in the session's local timezone, so `start_ts` in `hv_compute_windows` could have a mixed-timezone column (`start_ts` in local, `end_ts` in UTC). Arithmetic was always correct because `format(..., tz = "UTC")` in `get_readings` guarded the API calls, but the labels were confusing.  
   _Fixed: added `lubridate::with_tz(last_ts, "UTC")` in `hv_last_timestamps`._
 
+- [x] **Force UTC for all timestamps**  
+  _Fixed: internal `as_utc()` (`R/utils.R`) normalises every datetime entry point. `hv_readings()` `start`/`end` accept POSIXct in any tz (instant kept), Date, epoch seconds, or character (offset-less strings read as **UTC**, explicit offsets honoured); NA/unparseable windows now error instead of silently hitting the API. Returned `timestamp`, `hv_last_timestamps()$last_ts`, `hv_validate_readings()` output, and `token_expires_at` are all UTC-labelled. DB pools in `sync-job.R` and the notebook pass `timezone = "UTC"` explicitly._  
+  _Behaviour change: `hv_readings(start = "2026-05-01 08:00")` has always meant 08:00 UTC; now documented._
+
 - [ ] **`parameter_name` silently `NA` when parameter not cached**  
   `get_readings()` left-joins against `parameter_df`. If `parameter_id` is unknown, `parameter_name` is silently `NA` rather than warned about.
 
@@ -59,12 +63,13 @@
 - [x] `hv_validate_readings` — happy path and all error branches (pure function, no network/DB needed)
 - [x] `hv_compute_windows` with `start_fresh = TRUE` (no DB needed)
 - [x] `hv_compute_windows` input validation (`locations` not a data frame, missing `location_id`)
-- [ ] `hv_compute_windows` with mocked `hv_last_timestamps` result
-- [ ] `hv_upsert` with in-memory SQLite (requires RPostgres-compatible DDL or SQLite adaptation)
-- [ ] `hv_ensure_table` DDL generation (string check only)
+- [x] `hv_compute_windows` with mocked `hv_last_timestamps` result
+- [x] `hv_upsert` SQL generation (DO UPDATE / DO NOTHING, batching, zero rows) — `DBI::dbExecute`/`dbWriteTable` mocked against `DBI::ANSI()`; no SQLite needed
+- [x] `hv_ensure_table` DDL generation (string check only)
+- [x] UTC normalisation: `as_utc()`, `hv_readings` windows + output, `hv_validate_readings`
 
 ## Notes
 
 - The package is not a git repo yet — credentials in `.Renviron` are not currently at risk, but should be cleaned up before `git init`.
-- The integration notebook in `data-raw/test-hydrovu-fetch.Rmd` contains hardcoded site names (Manning Creek, Piezometers) and a TODO: "FORCE UTC FOR ALL TIMESTAMPS".
+- The integration notebook in `data-raw/test-hydrovu-fetch.Rmd` contains hardcoded site names (Manning Creek, Piezometers).
 - `hv_upsert` correctly handles `pool::Pool` by checking out/returning a single connection so the temp table is visible to the INSERT. This is a non-obvious but important correctness detail.
