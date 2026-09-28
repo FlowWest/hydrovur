@@ -57,7 +57,7 @@ hv_readings <- function(con, location_ids, start, end) {
 
   # name lookup from cache for human-readable messages
   name_of <- if (!is.null(con$locations))
-    setNames(con$locations$name, as.character(con$locations$location_id))
+    rlang::set_names(con$locations$name, as.character(con$locations$location_id))
   else
     character(0)
 

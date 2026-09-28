@@ -219,7 +219,7 @@ nrow(new_readings)
 new_readings |> head()
 ```
 
-```{r first-sync-execute}\
+```{r first-sync-execute}
 hv_sync(db, new_readings, table = TEST_TABLE)
 ```
 
@@ -233,7 +233,7 @@ row_count <- function() {
   DBI::dbGetQuery(
     db,
     glue::glue_sql("SELECT COUNT(*) AS n FROM {`TEST_TABLE`}", .con = db)
-  )$n
+  )$n |> as.integer()  # COUNT(*) is integer64
 }
 
 before <- row_count()

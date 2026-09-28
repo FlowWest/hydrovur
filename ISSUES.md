@@ -48,6 +48,9 @@
 
 ## Low / Polish
 
+- [ ] **R CMD check WARNING: `inst/exec` is reserved by R**  
+  `sync-job.R` lives in `inst/exec/`, a subdirectory R itself uses. Moving it to e.g. `inst/scripts/` clears the warning but changes the `system.file("exec/sync-job.R", ...)` path in README and anywhere it's deployed from.
+
 - [ ] **`hv_sync` emits two near-identical messages**  
   Prints `"Upserting N records..."` then `hv_upsert()` prints `"Upserted N rows..."`.  
   Mildly redundant; both are intentional (pre-op and post-op) but could be consolidated.
