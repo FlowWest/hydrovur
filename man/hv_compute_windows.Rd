@@ -2,10 +2,10 @@
 % Please edit documentation in R/sync.R
 \name{hv_compute_windows}
 \alias{hv_compute_windows}
-\title{Compute per-location fetch windows from existing DB state}
+\title{Compute per-location fetch windows from existing readings}
 \usage{
 hv_compute_windows(
-  db_con,
+  source,
   locations,
   table = "gage_readings",
   overlap_days = 2,
@@ -14,13 +14,17 @@ hv_compute_windows(
 )
 }
 \arguments{
-\item{db_con}{A DBI connection or \code{pool::Pool} to PostgreSQL.}
+\item{source}{Where existing readings live: either a DBI connection /
+\code{pool::Pool} to PostgreSQL, or a data frame of readings with (at least)
+\code{location_id} and \code{timestamp} columns -- e.g. a previously saved RDS of
+\code{\link[=hv_readings]{hv_readings()}} output, for file-based workflows without a database.}
 
 \item{locations}{Tibble with at least a \code{location_id} column (typically
 a filtered copy of \code{hv_locations(con)}). Any other columns are passed
 through unchanged.}
 
-\item{table}{Readings table to read \code{MAX(timestamp)} from.}
+\item{table}{Readings table to read \code{MAX(timestamp)} from. Ignored when
+\code{source} is a data frame.}
 
 \item{overlap_days}{Days to back off the last-seen timestamp by, to
 tolerate late-arriving boundary points.}
@@ -42,10 +46,10 @@ tibble of \verb{[location_id, start_ts, end_ts]} suitable for passing to
 }
 \details{
 For each location: \code{start_ts = MAX(timestamp) - overlap_days}. If a
-location has no rows in \code{table} yet, \code{start_ts} falls back to
+location has no stored readings yet, \code{start_ts} falls back to
 \code{now - fresh_start_days}. \code{end_ts} is always "now" (UTC).
 
-When \code{start_fresh = TRUE}, the DB lookup is skipped and every location
+When \code{start_fresh = TRUE}, the lookup is skipped and every location
 gets the same \code{fresh_start_days} window.
 }
 \examples{
@@ -54,5 +58,9 @@ locs <- hv_locations(con) |> dplyr::filter(name \%in\% my_gages$name)
 windows <- hv_compute_windows(db, locs, table = "gage_readings",
                               overlap_days = 2)
 windows
+
+# File-based: compute windows from a previously saved readings tibble
+existing <- readRDS("readings.rds")
+windows  <- hv_compute_windows(existing, locs, overlap_days = 2)
 }
 }

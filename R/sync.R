@@ -33,38 +33,58 @@ hv_ensure_table <- function(db_con, table = "gage_readings") {
 
 #' Per-location latest timestamp in a readings table
 #'
-#' @param db_con A DBI connection or `pool::Pool` to PostgreSQL.
-#' @param table Target table name.
+#' @param source Where existing readings live: either a DBI connection /
+#'   `pool::Pool` to PostgreSQL, or a data frame of readings with (at least)
+#'   `location_id` and `timestamp` columns -- e.g. a previously saved RDS of
+#'   [hv_readings()] output, for file-based workflows without a database.
+#' @param table Target table name. Ignored when `source` is a data frame.
 #' @param location_ids Optional character vector to scope the query. If `NULL`
 #'   (default), the query covers every location present in the table.
 #'
 #' @return Tibble with `location_id` and `last_ts` (POSIXct, UTC) columns.
 #' @export
-hv_last_timestamps <- function(db_con, table = "gage_readings",
+hv_last_timestamps <- function(source, table = "gage_readings",
                                location_ids = NULL) {
-  if (!is.null(location_ids) && length(location_ids) == 0L) {
-    return(tibble::tibble(
-      location_id = character(),
-      last_ts     = as.POSIXct(character(), tz = "UTC")
-    ))
+  empty <- tibble::tibble(
+    location_id = character(),
+    last_ts     = as.POSIXct(character(), tz = "UTC")
+  )
+  if (!is.null(location_ids) && length(location_ids) == 0L) return(empty)
+
+  if (is.data.frame(source)) {
+    missing <- setdiff(c("location_id", "timestamp"), names(source))
+    if (length(missing) > 0L) {
+      stop("`source` data frame is missing required column(s): ",
+           paste(missing, collapse = ", "), ".", call. = FALSE)
+    }
+    ids  <- as.character(source$location_id)
+    ts   <- as_utc(source$timestamp, "source$timestamp")
+    keep <- !is.na(ids) & !is.na(ts)
+    if (!is.null(location_ids)) keep <- keep & ids %in% as.character(location_ids)
+    if (!any(keep)) return(empty)
+    return(
+      tibble::tibble(location_id = ids[keep], timestamp = ts[keep]) |>
+        dplyr::group_by(.data$location_id) |>
+        dplyr::summarise(last_ts = max(.data$timestamp), .groups = "drop")
+    )
   }
-  
+
   sql <- if (is.null(location_ids)) {
     glue::glue_sql("
       SELECT location_id, MAX(timestamp) AS last_ts
       FROM {`table`}
       GROUP BY location_id
-    ", .con = db_con)
+    ", .con = source)
   } else {
     glue::glue_sql("
       SELECT location_id, MAX(timestamp) AS last_ts
       FROM {`table`}
       WHERE location_id IN ({ids*})
       GROUP BY location_id
-    ", ids = as.character(location_ids), .con = db_con)
+    ", ids = as.character(location_ids), .con = source)
   }
-  
-  DBI::dbGetQuery(db_con, sql) |>
+
+  DBI::dbGetQuery(source, sql) |>
     tibble::as_tibble() |>
     dplyr::mutate(last_ts = as_utc(.data$last_ts))
 }
@@ -144,24 +164,25 @@ hv_upsert <- function(db_con, df, table, unique_cols,
   invisible(nrow(df))
 }
 
-#' Compute per-location fetch windows from existing DB state
+#' Compute per-location fetch windows from existing readings
 #'
 #' Looks up the most recent stored timestamp for each location and returns a
 #' tibble of `[location_id, start_ts, end_ts]` suitable for passing to
 #' [hv_readings()].
 #'
 #' For each location: `start_ts = MAX(timestamp) - overlap_days`. If a
-#' location has no rows in `table` yet, `start_ts` falls back to
+#' location has no stored readings yet, `start_ts` falls back to
 #' `now - fresh_start_days`. `end_ts` is always "now" (UTC).
 #'
-#' When `start_fresh = TRUE`, the DB lookup is skipped and every location
+#' When `start_fresh = TRUE`, the lookup is skipped and every location
 #' gets the same `fresh_start_days` window.
 #'
-#' @param db_con A DBI connection or `pool::Pool` to PostgreSQL.
+#' @inheritParams hv_last_timestamps
 #' @param locations Tibble with at least a `location_id` column (typically
 #'   a filtered copy of `hv_locations(con)`). Any other columns are passed
 #'   through unchanged.
-#' @param table Readings table to read `MAX(timestamp)` from.
+#' @param table Readings table to read `MAX(timestamp)` from. Ignored when
+#'   `source` is a data frame.
 #' @param overlap_days Days to back off the last-seen timestamp by, to
 #'   tolerate late-arriving boundary points.
 #' @param fresh_start_days Days back to fetch when no prior data exists for
@@ -179,8 +200,12 @@ hv_upsert <- function(db_con, df, table, unique_cols,
 #' windows <- hv_compute_windows(db, locs, table = "gage_readings",
 #'                               overlap_days = 2)
 #' windows
+#'
+#' # File-based: compute windows from a previously saved readings tibble
+#' existing <- readRDS("readings.rds")
+#' windows  <- hv_compute_windows(existing, locs, overlap_days = 2)
 #' }
-hv_compute_windows <- function(db_con, locations,
+hv_compute_windows <- function(source, locations,
                                table            = "gage_readings",
                                overlap_days     = 2,
                                fresh_start_days = 14,
@@ -201,7 +226,7 @@ hv_compute_windows <- function(db_con, locations,
   
   locations |>
     dplyr::left_join(
-      hv_last_timestamps(db_con, table, locations$location_id),
+      hv_last_timestamps(source, table, locations$location_id),
       by = "location_id"
     ) |>
     dplyr::mutate(

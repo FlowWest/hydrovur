@@ -91,6 +91,21 @@ hv_sync(db, readings, table = "gage_readings")
 primary-key columns, `timestamp` is POSIXct, `value` is numeric — then upserts.
 Re-running the same window is safe (idempotent).
 
+### Without a database
+
+`hv_compute_windows()` and `hv_last_timestamps()` also accept a data frame of
+previously fetched readings (anything with `location_id` and `timestamp`) in
+place of a DB connection, for file-based workflows:
+
+```r
+existing <- readRDS("readings.rds")
+windows  <- hv_compute_windows(existing, locs, overlap_days = 2)
+new      <- hv_readings(con, windows$location_id, windows$start_ts, windows$end_ts)
+saveRDS(dplyr::bind_rows(existing, new) |>
+          dplyr::distinct(location_id, parameter_id, timestamp, .keep_all = TRUE),
+        "readings.rds")
+```
+
 ### Database schema
 
 `hv_ensure_table()` creates the target table if it doesn't exist:

@@ -4,12 +4,15 @@
 \alias{hv_last_timestamps}
 \title{Per-location latest timestamp in a readings table}
 \usage{
-hv_last_timestamps(db_con, table = "gage_readings", location_ids = NULL)
+hv_last_timestamps(source, table = "gage_readings", location_ids = NULL)
 }
 \arguments{
-\item{db_con}{A DBI connection or \code{pool::Pool} to PostgreSQL.}
+\item{source}{Where existing readings live: either a DBI connection /
+\code{pool::Pool} to PostgreSQL, or a data frame of readings with (at least)
+\code{location_id} and \code{timestamp} columns -- e.g. a previously saved RDS of
+\code{\link[=hv_readings]{hv_readings()}} output, for file-based workflows without a database.}
 
-\item{table}{Target table name.}
+\item{table}{Target table name. Ignored when \code{source} is a data frame.}
 
 \item{location_ids}{Optional character vector to scope the query. If \code{NULL}
 (default), the query covers every location present in the table.}
