@@ -1,4 +1,4 @@
-# HydroVuR
+# rhydrovu
 
 Connection-oriented R client for the [HydroVu public API](https://www.hydrovu.com/public-api/docs/), with helpers for incrementally syncing readings into a PostgreSQL backend.
 
