@@ -1,9 +1,9 @@
 ---
-title: "hydrovur test"
+title: "rhydrovu test"
 output: html_document
 ---
 
-This notebook exercises every public function in `hydrovur` against the live
+This notebook exercises every public function in `rhydrovu` against the live
 HydroVu API and an AWS Postgres database. It uses the site / sensor / gage
 inventory from the upstream `global.R`, inlined so the script is self-contained.
 
@@ -126,7 +126,7 @@ Two locations over a recent hour, quick round-trip to confirm the shape.
 
 ```{r fetch-sample}
 # wrapped in with_options for verbose messaging
-sample_readings <- withr::with_options(list(hydrovur.verbose = TRUE), 
+sample_readings <- withr::with_options(list(rhydrovu.verbose = TRUE), 
   hv_readings(
     con,
     location_ids = head(gage_locs$location_id, 2),

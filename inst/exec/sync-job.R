@@ -20,7 +20,7 @@
 #   --locations L   Comma-separated HydroVu location names to sync (default: all)
 
 suppressPackageStartupMessages({
-  library(hydrovur)
+  library(rhydrovu)
   library(dplyr)
   library(lubridate)
   library(paws)
@@ -55,7 +55,7 @@ main <- function() {
     if (length(idx) > 0L) strsplit(argv[idx + 1L], ",")[[1L]] else NULL
   }
 
-  log_ts("hydrovur sync-job starting")
+  log_ts("rhydrovu sync-job starting")
   log_ts("  table       = ", table_name)
   log_ts("  start_fresh = ", start_fresh)
   log_ts("  locations   = ", if (is.null(filter_locs)) "(all)"

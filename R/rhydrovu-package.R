@@ -1,4 +1,4 @@
-#' hydrovur: HydroVu public API client for R
+#' rhydrovu: HydroVu public API client for R
 #'
 #' Connection-oriented R client for the HydroVu public REST API. Provides
 #' cached access to locations and parameter friendly-names, fetches sensor

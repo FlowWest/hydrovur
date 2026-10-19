@@ -11,7 +11,7 @@
 isi_paginate <- function(token, url, query = NULL, parse_as = "text",
                          body_parse = function(x) x,
                          stop_when  = NULL) {
-  verbose <- isTRUE(getOption("hydrovur.verbose", FALSE))
+  verbose <- isTRUE(getOption("rhydrovu.verbose", FALSE))
 
   out       <- list()
   next_page <- NULL

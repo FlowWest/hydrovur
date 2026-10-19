@@ -1,4 +1,4 @@
 library(testthat)
-library(hydrovur)
+library(rhydrovu)
 
-test_check("hydrovur")
+test_check("rhydrovu")

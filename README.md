@@ -1,4 +1,4 @@
-# HydroVuR
+# rhydrovu
 
 Connection-oriented R client for the [HydroVu public API](https://www.hydrovu.com/public-api/docs/), with helpers for incrementally syncing readings into a PostgreSQL backend.
 
@@ -6,7 +6,7 @@ Connection-oriented R client for the [HydroVu public API](https://www.hydrovu.co
 
 ```r
 # install.packages("devtools")
-devtools::install_github("FlowWest/hydrovur")
+devtools::install_github("FlowWest/rhydrovu")
 ```
 
 ## Authentication
@@ -27,7 +27,7 @@ con <- hv_connect(client_id = "...", client_secret = "...")
 ## Quick start
 
 ```r
-library(hydrovur)
+library(rhydrovu)
 library(dplyr)
 
 # 1. Connect — authenticates via OAuth2 and caches locations + parameters.
@@ -126,7 +126,7 @@ Join against `hv_locations(con)` and `hv_parameters(con)` to resolve names.
 
 ## Server job
 
-`inst/exec/sync-job.R` is a standalone script for automated syncing. After installing the package, locate it with `system.file("exec/sync-job.R", package = "hydrovur")`.
+`inst/exec/sync-job.R` is a standalone script for automated syncing. After installing the package, locate it with `system.file("exec/sync-job.R", package = "rhydrovu")`.
 
 ```bash
 Rscript /path/to/sync-job.R                                # all locations → gage_readings
@@ -164,7 +164,7 @@ Requires standard AWS credential configuration (IAM role, `~/.aws/credentials`, 
 Run as a cron job or systemd timer. Example cron (hourly):
 
 ```cron
-0 * * * * Rscript /path/to/sync-job.R >> /var/log/hydrovur-sync.log 2>&1
+0 * * * * Rscript /path/to/sync-job.R >> /var/log/rhydrovu-sync.log 2>&1
 ```
 
 The script logs timestamped lines to stderr and exits non-zero on critical failures, making it compatible with cron, systemd, or any process supervisor.

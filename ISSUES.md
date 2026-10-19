@@ -1,4 +1,4 @@
-# hydrovur — Issues & TODO
+# rhydrovu — Issues & TODO
 
 ## Critical
 
@@ -14,7 +14,7 @@
 ## High
 
 - [x] **BugReports URL typo in DESCRIPTION**  
-  Points to `FlowWest/hydrovu/issues` — should be `FlowWest/hydrovur/issues`.
+  Points to `FlowWest/hydrovu/issues` — should be `FlowWest/rhydrovu/issues`.
 
 - [x] **`.Renviron` not in `.gitignore`**  
   `.Renviron` holds live API credentials and an AWS Secrets Manager secret name.  
