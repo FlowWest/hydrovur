@@ -10,6 +10,7 @@ test_that("hv_token / hv_refresh_token reject non-connection inputs", {
   expect_error(hv_refresh_token(list()), regexp = "hydrovu_connection")
   expect_error(hv_locations(list()),     regexp = "hydrovu_connection")
   expect_error(hv_parameters(list()),    regexp = "hydrovu_connection")
+  expect_error(hv_units(list()),         regexp = "hydrovu_connection")
   expect_error(hv_readings(list(), character(), Sys.time(), Sys.time()),
                regexp = "hydrovu_connection")
 })

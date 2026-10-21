@@ -119,3 +119,19 @@ get_readings <- function(token, location_id, parameter_df,
     }
   )
 }
+
+# GET /sispec/friendlynames, units section (single page; no pagination header).
+get_unit_names <- function(token, base_url) {
+  res <- httr::GET(
+    paste0(base_url, "/sispec/friendlynames"),
+    httr::add_headers(Authorization = paste("Bearer", token))
+  )
+  httr::stop_for_status(res)
+
+  jsonlite::fromJSON(
+    httr::content(res, "text", encoding = "UTF-8"), flatten = TRUE
+  )$units |>
+    tibble::enframe(name = "unit_id", value = "unit_name") |>
+    tidyr::unnest(unit_name) |>
+    dplyr::mutate(unit_id = as.character(unit_id))
+}

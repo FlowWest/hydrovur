@@ -46,6 +46,7 @@ hv_connect <- function(client_id     = Sys.getenv("HYDROVU_CLIENT_ID"),
   con$token_expires_at <- as.POSIXct(NA, tz = "UTC")
   con$locations        <- NULL
   con$parameters       <- NULL
+  con$units            <- NULL
   class(con) <- "hydrovu_connection"
 
   hv_refresh_token(con)

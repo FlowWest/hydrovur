@@ -42,6 +42,7 @@ con
 # 2. Inspect what's available.
 hv_locations(con)    # tibble: location_id, name, gps.latitude, gps.longitude
 hv_parameters(con)   # tibble: parameter_id, parameter_name
+hv_units(con)        # tibble: unit_id, unit_name
 
 # 3. Fetch readings for selected locations over a time window.
 locs <- hv_locations(con) |> filter(grepl("SGMC", name))
@@ -122,7 +123,8 @@ CREATE TABLE gage_readings (
 ```
 
 `location_id` and `parameter_id` are the raw API integer IDs stored as text.
-Join against `hv_locations(con)` and `hv_parameters(con)` to resolve names.
+Join against `hv_locations(con)`, `hv_parameters(con)` and `hv_units(con)` to
+resolve names.
 
 ## Server job
 
@@ -177,6 +179,7 @@ The script logs timestamped lines to stderr and exits non-zero on critical failu
 | `R/api-internals.R` | Low-level HTTP wrappers (`isi_paginate`, `get_readings`, …) |
 | `R/locations.R` | Cached locations accessor (`hv_locations`) |
 | `R/parameters.R` | Cached parameter friendly-names (`hv_parameters`) |
+| `R/units.R` | Cached unit friendly-names (`hv_units`) |
 | `R/readings.R` | Per-location windowed readings fetch (`hv_readings`) |
 | `R/sync.R` | PostgreSQL pipeline (`hv_ensure_table`, `hv_compute_windows`, `hv_sync`, `hv_upsert`, …) |
 | `R/utils.R` | Internal helpers |

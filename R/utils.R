@@ -29,7 +29,7 @@ stop_if_not_connection <- function(con) {
 # pipelines. These are not true globals.
 utils::globalVariables(c(
   ".", "parameterId", "unitId", "readings",
-  "parameter_id", "unit_id", "parameter_name",
+  "parameter_id", "unit_id", "parameter_name", "unit_name",
   "timestamp", "value", "name", "id",
   "last_ts", "start_ts", "end_ts", "location_id"
 ))
